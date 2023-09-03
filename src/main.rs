@@ -1,7 +1,7 @@
 mod model;
 mod conventions;
 
-use std::io::{Read, Write, stdout};
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
@@ -44,7 +44,6 @@ fn handle_client(mut stream: TcpStream) {
                     packet.request_type,
                     packet.payload
                 );
-                let asd = 1;
                 let response_packet = Packet {
                     length: None,
                     request_id: packet.request_id,

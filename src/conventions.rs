@@ -52,7 +52,7 @@ impl Packet {
         let mut buffer: Vec<u8> = Vec::new();
 
         // LENGTH (32 bit integer - 4 bytes)
-        if(self.length.is_none()) {
+        if self.length.is_none() {
             let mut length: i32 = 0;
             length += 4; // 4 bytes for request id
             length += 4; // 4 bytes for packet type
