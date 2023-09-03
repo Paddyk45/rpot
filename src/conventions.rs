@@ -5,7 +5,7 @@ impl Packet {
     pub fn from_u8_arr(buffer: &[u8]) -> Result<Packet, failure::Error> {
         let length_slice: [u8; 4] = buffer[0..4].try_into().unwrap();
         let request_id_slice: [u8; 4] = buffer[4..8].try_into().unwrap();
-        let request_type_slice: [u8; 4] = buffer[8..12].try_into().unwrap();
+        let packet_type_slice: [u8; 4] = buffer[8..12].try_into().unwrap();
         let mut payload_vec: Vec<u8> = Vec::new();
         for i in 12.. {
             match buffer[i] {
@@ -17,7 +17,7 @@ impl Packet {
         Ok(Packet {
             length: Some(Self::parse_length(length_slice)),
             request_id: Self::parse_request_id(request_id_slice),
-            request_type: Self::parse_request_type(request_type_slice)?,
+            packet_type: Self::parse_packet_type(packet_type_slice)?,
             payload: Self::parse_payload(payload_vec)
         })
     }
@@ -31,7 +31,7 @@ impl Packet {
         buffer[0] as i32
     }
 
-    fn parse_request_type(buffer: [u8; 4]) -> Result<PacketType, failure::Error> {
+    fn parse_packet_type(buffer: [u8; 4]) -> Result<PacketType, failure::Error> {
         let request_type = buffer[0];
         match request_type {
             0 => Ok(PacketType::MultiPacketResponse),
@@ -69,7 +69,7 @@ impl Packet {
         buffer.extend_from_slice(&request_id_buf);
 
         // REQUEST TYPE (32 bit integer - 4 bytes)
-        let request_type_buf = self.request_type.to_i32().to_le_bytes();
+        let request_type_buf = self.packet_type.to_i32().to_le_bytes();
         buffer.extend_from_slice(&request_type_buf);
 
         // PAYLOAD (00-terminated string)

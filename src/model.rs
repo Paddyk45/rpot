@@ -2,7 +2,7 @@
 pub struct Packet {
     pub length: Option<i32>,
     pub request_id: i32,
-    pub request_type: PacketType,
+    pub packet_type: PacketType,
     pub payload: String,
 }
 

@@ -41,16 +41,22 @@ fn handle_client(mut stream: TcpStream) {
                     stream.peer_addr().unwrap(),
                     packet.length.unwrap(),
                     packet.request_id,
-                    packet.request_type,
+                    packet.packet_type,
                     packet.payload
                 );
-                let response_packet = Packet {
-                    length: None,
-                    request_id: packet.request_id,
-                    request_type: PacketType::AuthSuccess,
-                    payload: String::new()
-                };
-                stream.write(&response_packet.to_u8_arr()).unwrap();
+                match packet.packet_type {
+                    PacketType::Login => {
+                        let response_packet = Packet {
+                            length: None,
+                            request_id: packet.request_id,
+                            packet_type: PacketType::AuthSuccess,
+                            payload: String::new()
+                        };
+                        stream.write(&response_packet.to_u8_arr()).unwrap();
+                    }
+
+                    _ => println!("Responding to this packet type is not implemented")
+                }
             }
             Err(err) => panic!("{}", err),
         }
