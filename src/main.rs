@@ -48,7 +48,7 @@ fn handle_client(mut stream: TcpStream) {
                     packet.length.unwrap(),
                     packet.request_id,
                     packet.packet_type,
-                    packet.payload.clone().unwrap_or("empty".to_string())
+                    strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or("empty".to_string())
                 );
                 match packet.packet_type {
                     PacketType::Login => {
@@ -57,8 +57,7 @@ fn handle_client(mut stream: TcpStream) {
                     }
 
                     PacketType::RunCommand => {
-                        let command = packet.payload.unwrap_or("".to_string());
-
+                        let mut command = packet.payload.unwrap_or("".to_string());
                         let command_response =
                             match command.as_str().split_whitespace().next().unwrap_or("") {
                                 "seed" => "Seed: [69420]",
