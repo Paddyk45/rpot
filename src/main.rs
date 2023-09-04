@@ -48,7 +48,7 @@ fn handle_client(mut stream: TcpStream) {
                     packet.length.unwrap(),
                     packet.request_id,
                     packet.packet_type,
-                    strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or("empty".to_string())
+                    strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or("empty".to_string()))
                 );
                 match packet.packet_type {
                     PacketType::Login => {
