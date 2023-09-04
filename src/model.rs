@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Debug, Default)]
 pub struct Packet {
     pub length: Option<i32>,
