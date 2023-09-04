@@ -41,7 +41,7 @@ impl Packet {
     }
 
     fn parse_payload(buffer: Vec<u8>) -> Option<String> {
-        if buffer.len() < 2 {
+        if buffer.len() == 0 {
             return None;
         }
         Some(String::from_utf8(buffer).unwrap())

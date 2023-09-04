@@ -9,7 +9,7 @@ use std::thread;
 use crate::model::*;
 
 fn main() {
-    let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("127.0.0.1".to_string());
+    let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("0.0.0.0".to_string());
     let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or("25575".to_string());
     let listener =
         TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap())).unwrap();
