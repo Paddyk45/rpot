@@ -1,5 +1,6 @@
 # rpot
 
+Rpot is a very basic rpot honeypot that logs passwords and executed commands
 # Usage:
 ## Running
 ```bash
