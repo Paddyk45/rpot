@@ -1,5 +1,6 @@
-mod model;
 mod conventions;
+mod generator;
+mod model;
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -8,8 +9,12 @@ use std::thread;
 use crate::model::*;
 
 fn main() {
-    let listener = TcpListener::bind("0.0.0.0:25575").unwrap();
+    let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("127.0.0.1".to_string());
+    let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or("25575".to_string());
+    let listener =
+        TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap())).unwrap();
 
+    println!("Listening on {}:{}", bind_addr, bind_port);
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -42,20 +47,21 @@ fn handle_client(mut stream: TcpStream) {
                     packet.length.unwrap(),
                     packet.request_id,
                     packet.packet_type,
-                    packet.payload
+                    packet.payload.unwrap_or("empty".to_string())
                 );
                 match packet.packet_type {
                     PacketType::Login => {
-                        let response_packet = Packet {
-                            length: None,
-                            request_id: packet.request_id,
-                            packet_type: PacketType::AuthSuccess,
-                            payload: String::new()
-                        };
+                        let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream.write(&response_packet.to_u8_arr()).unwrap();
                     }
 
-                    _ => println!("Responding to this packet type is not implemented")
+                    PacketType::RunCommand => {
+                        let response_packet =
+                            Packet::gen_response(packet.request_id, "".to_string());
+                        stream.write(&response_packet.to_u8_arr()).unwrap();
+                    }
+
+                    _ => println!("Client sent invalid packet type"),
                 }
             }
             Err(err) => panic!("{}", err),
