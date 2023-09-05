@@ -57,7 +57,9 @@ impl Webhook {
                     payload.clone().unwrap_or("".to_string())
                 )));
                 match event {
-                    EventType::ClientDisconnect => self.message_embed.as_mut().unwrap().color = 15672064, // change color to red if client disconnected
+                    EventType::ClientDisconnect => {
+                        self.message_embed.as_mut().unwrap().color = 15672064
+                    } // change color to red if client disconnected
                     _ => {}
                 }
                 self.message_embed.as_mut().unwrap().description = Some(descr);
