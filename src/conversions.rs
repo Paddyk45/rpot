@@ -2,7 +2,7 @@ use crate::model::{Packet, PacketType};
 
 // Byte array to packet
 impl Packet {
-    pub fn from_u8_arr(buffer: &[u8]) -> Result<Packet, failure::Error> {
+    pub fn from_u8_arr(buffer: &[u8]) -> anyhow::Result<Packet> {
         let length_slice: [u8; 4] = buffer[0..4].try_into().unwrap();
         let request_id_slice: [u8; 4] = buffer[4..8].try_into().unwrap();
         let packet_type_slice: [u8; 4] = buffer[8..12].try_into().unwrap();
@@ -30,13 +30,13 @@ impl Packet {
         buffer[0] as i32
     }
 
-    fn parse_packet_type(buffer: [u8; 4]) -> Result<PacketType, failure::Error> {
+    fn parse_packet_type(buffer: [u8; 4]) -> anyhow::Result<PacketType> {
         let request_type = buffer[0];
         match request_type {
             0 => Ok(PacketType::MultiPacketResponse),
             2 => Ok(PacketType::RunCommand),
             3 => Ok(PacketType::Login),
-            _ => Err(failure::err_msg("Invalid request type")),
+            _ => anyhow::bail!("Invalid request type"),
         }
     }
 

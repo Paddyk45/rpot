@@ -50,7 +50,7 @@ async fn main() {
 async fn handle_client(
     mut stream: TcpStream,
     webhook: &mut Option<Webhook>,
-) -> Result<(), failure::Error> {
+) -> anyhow::Result<()> {
     if let Some(webhook) = webhook {
         webhook
             .push(EventType::ClientConnect, None)

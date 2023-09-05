@@ -18,7 +18,7 @@ impl Webhook {
         &mut self,
         event: EventType,
         payload: Option<String>,
-    ) -> Result<(), failure::Error> {
+    ) -> anyhow::Result<()> {
         match self.message_id.clone() {
             None => {
                 match event {
@@ -69,7 +69,7 @@ impl Webhook {
         Ok(())
     }
 
-    async fn create_or_update(&mut self) -> Result<(), failure::Error> {
+    async fn create_or_update(&mut self) -> anyhow::Result<()> {
         if self.message_embed.as_ref().is_none() {
             panic!("Empty embed")
         }
