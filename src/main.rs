@@ -26,15 +26,21 @@ fn main() {
             Ok(stream) => {
                 let webhook_url = webhook_url.clone();
                 thread::spawn(move || {
-                    println!("Connection to {} opened", stream.peer_addr().unwrap());
+                    println!(
+                        "Connection to {} opened",
+                        stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
+                    );
 
                     let peer_addr = stream.peer_addr();
 
-                    handle_client(
+                    match handle_client(
                         stream,
                         &mut webhook_url
                             .map(|url| Webhook::new(peer_addr.unwrap().to_string(), url)),
-                    );
+                    ) {
+                        Ok(_) => {}
+                        Err(error) => println!("Error while handling client: {}", error),
+                    };
                 });
             }
             Err(_) => {
@@ -44,9 +50,14 @@ fn main() {
     }
 }
 
-fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) {
+fn handle_client(
+    mut stream: TcpStream,
+    webhook: &mut Option<Webhook>,
+) -> Result<(), failure::Error> {
     if let Some(webhook) = webhook {
-        webhook.push(EventType::ClientConnect, None);
+        webhook
+            .push(EventType::ClientConnect, None)
+            .expect("Failed to push event to Webhook");
     }
     loop {
         let mut read = [0; 1024];
@@ -54,16 +65,19 @@ fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) {
             Ok(n) => {
                 if n == 0 {
                     // connection was closed
-                    println!("Connection to {} closed", stream.peer_addr().unwrap());
+                    println!("Connection to {} closed", stream.peer_addr()?);
                     if let Some(webhook) = webhook {
-                        webhook.push(EventType::ClientDisconnect, None).unwrap();
+                        webhook
+                            .push(EventType::ClientDisconnect, None)
+                            .expect("Failed to push event to Webhook");
                     }
                     break;
                 }
-                let packet: Packet = Packet::from_u8_arr(&read).unwrap();
+                let packet: Packet =
+                    Packet::from_u8_arr(&read).expect("Failed to deserialize recieved packet");
                 println!(
                     "Packet from {}:\n Length: {}\n Request ID: {}\n Request Type: {:?}\n Payload: {}",
-                    stream.peer_addr().unwrap(),
+                    stream.peer_addr()?,
                     packet.length.unwrap(),
                     packet.request_id,
                     packet.packet_type,
@@ -72,17 +86,23 @@ fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) {
                 match packet.packet_type {
                     PacketType::Login => {
                         if let Some(webhook) = webhook {
-                            webhook.push(EventType::Auth, packet.payload).unwrap();
+                            webhook
+                                .push(EventType::Auth, packet.payload)
+                                .expect("Failed to push event to Webhook");
                         }
 
                         let response_packet = Packet::gen_auth_success(packet.request_id);
-                        stream.write(&response_packet.to_u8_arr()).unwrap();
+                        stream
+                            .write(&response_packet.to_u8_arr())
+                            .expect("Failed to write to stream");
                     }
 
                     PacketType::RunCommand => {
                         let command = packet.payload.clone().unwrap_or("".to_string());
                         if let Some(webhook) = webhook {
-                            webhook.push(EventType::RunCommand, packet.payload).unwrap();
+                            webhook
+                                .push(EventType::RunCommand, packet.payload)
+                                .expect("Failed to push event to Webhook");
                         }
                         let command_response =
                             match command.as_str().split_whitespace().next().unwrap_or("") {
@@ -109,4 +129,5 @@ fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) {
             Err(err) => panic!("{}", err),
         }
     }
+    Ok(())
 }

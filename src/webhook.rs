@@ -1,8 +1,5 @@
 use crate::model::{EventType, Webhook};
 use crate::webhook_model::*;
-use std::fmt;
-use std::ops::Deref;
-
 fn gen_codeblock(inp: String) -> String {
     format!("```{}```", inp)
 }
@@ -43,7 +40,7 @@ impl Webhook {
                 self.create().unwrap();
                 println!("{:?}", self.message_id);
             }
-            Some(msg_id) => {
+            Some(_) => {
                 let mut descr = self
                     .message_embed
                     .clone()
