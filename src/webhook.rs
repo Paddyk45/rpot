@@ -38,7 +38,6 @@ impl Webhook {
                 };
                 self.message_embed = Some(embed);
                 self.create().unwrap();
-                println!("{:?}", self.message_id);
             }
             Some(_) => {
                 let mut descr = self
