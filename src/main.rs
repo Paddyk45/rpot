@@ -6,11 +6,11 @@ mod webhook_model;
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::thread;
 
 use crate::model::*;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("0.0.0.0".to_string());
     let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or("25575".to_string());
     let webhook_url = match std::env::var("RPOT_WEBHOOK_URL") {
@@ -25,21 +25,20 @@ fn main() {
         match stream {
             Ok(stream) => {
                 let webhook_url = webhook_url.clone();
-                thread::spawn(move || {
-                    println!(
-                        "Connection to {} opened",
-                        stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
-                    );
+                println!(
+                    "Connection to {} opened",
+                    stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
+                );
 
-                    let peer_addr = stream.peer_addr();
-
+                let peer_addr = stream.peer_addr().unwrap().to_string();
+                tokio::spawn(async move {
                     match handle_client(
                         stream,
                         &mut webhook_url
-                            .map(|url| Webhook::new(peer_addr.unwrap().to_string(), url)),
-                    ) {
-                        Ok(_) => {}
-                        Err(error) => println!("Error while handling client: {}", error),
+                            .map(|url| Webhook::new(peer_addr, url)),
+                    ).await {
+                        Ok(()) => {},
+                        Err(err) => println!("Error handling client: {}", err)
                     };
                 });
             }
@@ -50,7 +49,7 @@ fn main() {
     }
 }
 
-fn handle_client(
+async fn handle_client(
     mut stream: TcpStream,
     webhook: &mut Option<Webhook>,
 ) -> Result<(), failure::Error> {
