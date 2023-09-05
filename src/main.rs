@@ -1,4 +1,4 @@
-mod conventions;
+mod convertions;
 mod generator;
 mod model;
 mod webhook;
