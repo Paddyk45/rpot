@@ -24,7 +24,7 @@ async fn main() {
         .unwrap();
 
     println!("Listening on {}:{}", bind_addr, bind_port);
-    for stream in listener.accept().await {
+    while let Ok(stream) = listener.accept().await {
         let stream = stream.0;
         let webhook_url = webhook_url.clone();
         println!(

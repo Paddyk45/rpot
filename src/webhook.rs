@@ -84,7 +84,6 @@ impl Webhook {
         webhook_request
             .embeds
             .push(self.message_embed.clone().unwrap());
-        println!("{}", self.webhook_url);
         let response: WebhookResponse = reqwest::Client::new()
                     .request(method, url)
                     .json(&webhook_request)
