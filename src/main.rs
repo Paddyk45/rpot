@@ -2,13 +2,13 @@ mod conventions;
 mod generator;
 mod model;
 mod webhook;
+mod webhook_model;
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
 use crate::model::*;
-use crate::webhook::webhook_handler;
 
 fn main() {
     let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("0.0.0.0".to_string());
@@ -24,24 +24,17 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                let wh_url = webhook_url.clone();
+                let webhook_url = webhook_url.clone();
                 thread::spawn(move || {
                     println!("Connection to {} opened", stream.peer_addr().unwrap());
 
-                    if wh_url.clone().is_some() {
-                        println!("a");
-                        webhook_handler(
-                            wh_url.clone().unwrap(),
-                            stream
-                                .peer_addr()
-                                .unwrap_or("0.0.0.0:1".parse().unwrap())
-                                .to_string(),
-                            webhook::EventType::ClientConnect,
-                            Some(String::new()),
-                        ).unwrap();
-                    }
+                    let peer_addr = stream.peer_addr();
 
-                    handle_client(stream, wh_url.clone());
+                    handle_client(
+                        stream,
+                        &mut webhook_url
+                            .map(|url| Webhook::new(peer_addr.unwrap().to_string(), url)),
+                    );
                 });
             }
             Err(_) => {
@@ -51,7 +44,10 @@ fn main() {
     }
 }
 
-fn handle_client(mut stream: TcpStream, webhook_url: Option<String>) {
+fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) {
+    if let Some(webhook) = webhook {
+        webhook.push(EventType::ClientConnect, None);
+    }
     loop {
         let mut read = [0; 1024];
         match stream.read(&mut read) {
@@ -59,15 +55,9 @@ fn handle_client(mut stream: TcpStream, webhook_url: Option<String>) {
                 if n == 0 {
                     // connection was closed
                     println!("Connection to {} closed", stream.peer_addr().unwrap());
-                    webhook_handler(
-                        webhook_url.clone().unwrap(),
-                        stream
-                            .peer_addr()
-                            .unwrap_or("0.0.0.0:1".parse().unwrap())
-                            .to_string(),
-                        webhook::EventType::ClientDisconnect,
-                        None,
-                    ).unwrap();
+                    if let Some(webhook) = webhook {
+                        webhook.push(EventType::ClientDisconnect, None).unwrap();
+                    }
                     break;
                 }
                 let packet: Packet = Packet::from_u8_arr(&read).unwrap();
@@ -81,31 +71,19 @@ fn handle_client(mut stream: TcpStream, webhook_url: Option<String>) {
                 );
                 match packet.packet_type {
                     PacketType::Login => {
-                        webhook_handler(
-                            webhook_url.clone().unwrap(),
-                            stream
-                                .peer_addr()
-                                .unwrap_or("0.0.0.0:1".parse().unwrap())
-                                .to_string(),
-                            webhook::EventType::Auth,
-                            packet.payload,
-                        ).unwrap();
-                        
+                        if let Some(webhook) = webhook {
+                            webhook.push(EventType::Auth, packet.payload).unwrap();
+                        }
+
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream.write(&response_packet.to_u8_arr()).unwrap();
                     }
 
                     PacketType::RunCommand => {
-                        let mut command = packet.payload.clone().unwrap_or("".to_string());
-                        webhook_handler(
-                            webhook_url.clone().unwrap(),
-                            stream
-                                .peer_addr()
-                                .unwrap_or("0.0.0.0:1".parse().unwrap())
-                                .to_string(),
-                            webhook::EventType::RunCommand,
-                            packet.payload,
-                        ).unwrap();
+                        let command = packet.payload.clone().unwrap_or("".to_string());
+                        if let Some(webhook) = webhook {
+                            webhook.push(EventType::RunCommand, packet.payload).unwrap();
+                        }
                         let command_response =
                             match command.as_str().split_whitespace().next().unwrap_or("") {
                                 "seed" => "Seed: [69420]",

@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::webhook_model::Embed;
+
 #[derive(Debug, Default)]
 pub struct Packet {
     pub length: Option<i32>,
@@ -15,4 +17,30 @@ pub enum PacketType {
     #[default]
     RunCommand, // Packet type: 2
     MultiPacketResponse, // Packet type: 0
+}
+
+pub enum EventType {
+    ClientConnect,
+    Auth,
+    RunCommand,
+    ClientDisconnect,
+}
+
+impl fmt::Display for EventType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EventType::ClientConnect => write!(f, "Client connected"),
+            EventType::RunCommand => write!(f, "Client executed command"),
+            EventType::ClientDisconnect => write!(f, "Client disconnected"),
+            EventType::Auth => write!(f, "Client logged in"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Webhook {
+    pub peer_addr: String,
+    pub webhook_url: String,
+    pub message_id: Option<String>,
+    pub message_embed: Option<Embed>,
 }
