@@ -15,7 +15,6 @@ pub struct Embed {
     pub author: Author,
     pub description: Option<String>,
     pub color: u32,
-    pub fields: Vec<Field>,
     pub footer: Footer,
 }
 impl Embed {
@@ -26,7 +25,6 @@ impl Embed {
             },
             description: None,
             color: 0,
-            fields: vec![],
             footer: Footer {
                 text: "".to_string(),
             },
@@ -37,13 +35,6 @@ impl Embed {
 #[derive(Debug, Serialize, Clone)]
 pub struct Author {
     pub name: String,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct Field {
-    pub name: String,
-    pub value: String,
-    pub inline: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
