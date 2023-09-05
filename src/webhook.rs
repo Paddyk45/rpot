@@ -95,7 +95,7 @@ impl Webhook {
             .push(self.message_embed.clone().unwrap());
         let response: WebhookResponse = ureq::patch(
             format!(
-                "{}/messages/{}?wait=true",
+                "{}/messages/{}",
                 &self.webhook_url,
                 self.message_id.as_ref().unwrap()
             )
