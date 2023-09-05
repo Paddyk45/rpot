@@ -4,8 +4,10 @@ mod model;
 mod webhook;
 mod webhook_model;
 
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
 
 use crate::model::*;
 
@@ -17,35 +19,31 @@ async fn main() {
         Ok(val) => Some(val),
         Err(_) => None,
     };
-    let listener =
-        TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap())).unwrap();
+    let listener = TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap()))
+        .await
+        .unwrap();
 
     println!("Listening on {}:{}", bind_addr, bind_port);
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                let webhook_url = webhook_url.clone();
-                println!(
-                    "Connection to {} opened",
-                    stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
-                );
+    while let Ok(stream) = listener.accept().await {
+        let stream = stream.0;
+        let webhook_url = webhook_url.clone();
+        println!(
+            "Connection to {} opened",
+            stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
+        );
 
-                let peer_addr = stream.peer_addr().unwrap().to_string();
-                tokio::spawn(async move {
-                    match handle_client(
-                        stream,
-                        &mut webhook_url
-                            .map(|url| Webhook::new(peer_addr, url)),
-                    ).await {
-                        Ok(()) => {},
-                        Err(err) => println!("Error handling client: {}", err)
-                    };
-                });
-            }
-            Err(_) => {
-                println!("Error");
-            }
-        }
+        let peer_addr = stream.peer_addr().unwrap().to_string();
+        tokio::spawn(async move {
+            match handle_client(
+                stream,
+                &mut webhook_url.map(|url| Webhook::new(peer_addr, url)),
+            )
+            .await
+            {
+                Ok(()) => {}
+                Err(err) => println!("Error handling client: {}", err),
+            };
+        });
     }
 }
 
@@ -56,11 +54,12 @@ async fn handle_client(
     if let Some(webhook) = webhook {
         webhook
             .push(EventType::ClientConnect, None)
+            .await
             .expect("Failed to push event to Webhook");
     }
     loop {
         let mut read = [0; 1024];
-        match stream.read(&mut read) {
+        match stream.read(&mut read).await {
             Ok(n) => {
                 if n == 0 {
                     // connection was closed
@@ -68,6 +67,7 @@ async fn handle_client(
                     if let Some(webhook) = webhook {
                         webhook
                             .push(EventType::ClientDisconnect, None)
+                            .await
                             .expect("Failed to push event to Webhook");
                     }
                     break;
@@ -87,12 +87,14 @@ async fn handle_client(
                         if let Some(webhook) = webhook {
                             webhook
                                 .push(EventType::Auth, packet.payload)
+                                .await
                                 .expect("Failed to push event to Webhook");
                         }
 
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream
                             .write(&response_packet.to_bytes())
+                            .await
                             .expect("Failed to write to stream");
                     }
 
@@ -101,6 +103,7 @@ async fn handle_client(
                         if let Some(webhook) = webhook {
                             webhook
                                 .push(EventType::RunCommand, packet.payload)
+                                .await
                                 .expect("Failed to push event to Webhook");
                         }
                         let command_response =
@@ -119,6 +122,7 @@ async fn handle_client(
                                 )
                                 .to_bytes(),
                             )
+                            .await
                             .expect("Failed to write to stream");
                     }
 

@@ -14,7 +14,7 @@ impl Webhook {
         }
     }
 
-    pub fn push(
+    pub async fn push(
         &mut self,
         event: EventType,
         payload: Option<String>,
@@ -37,7 +37,7 @@ impl Webhook {
                     text: "RPot \u{2022} https://github.com/Paddyk45/rpot".to_string(),
                 };
                 self.message_embed = Some(embed);
-                self.create().unwrap();
+                self.create_or_update().await.unwrap();
             }
             Some(_) => {
                 let mut desc = self
@@ -63,46 +63,35 @@ impl Webhook {
                     _ => {}
                 }
                 self.message_embed.as_mut().unwrap().description = Some(desc);
-                self.update().unwrap();
+                self.create_or_update().await.unwrap();
             }
         }
         Ok(())
     }
 
-    fn create(&mut self) -> Result<(), failure::Error> {
+    async fn create_or_update(&mut self) -> Result<(), failure::Error> {
         if self.message_embed.as_ref().is_none() {
             panic!("Empty embed")
         }
+        let (method, url) = match self.message_id {
+            None => (reqwest::Method::POST, self.webhook_url.clone()),
+            Some(_) => (
+                reqwest::Method::PATCH,
+                format!("{}/messages/{}", self.webhook_url, self.message_id.clone().unwrap()),
+            ),
+        };
         let mut webhook_request: WebhookRequest = WebhookRequest::new();
         webhook_request
             .embeds
             .push(self.message_embed.clone().unwrap());
-        let response: WebhookResponse =
-            ureq::post(format!("{}?wait=true", &self.webhook_url).as_str())
-                .send_json(webhook_request)?
-                .into_json()?;
-        self.message_id = Some(response.id);
-        Ok(())
-    }
-
-    fn update(&mut self) -> Result<(), failure::Error> {
-        if self.message_embed.as_ref().is_none() {
-            panic!("Empty embed")
-        }
-        let mut webhook_request: WebhookRequest = WebhookRequest::new();
-        webhook_request
-            .embeds
-            .push(self.message_embed.clone().unwrap());
-        let response: WebhookResponse = ureq::patch(
-            format!(
-                "{}/messages/{}",
-                &self.webhook_url,
-                self.message_id.as_ref().unwrap()
-            )
-            .as_str(),
-        )
-        .send_json(webhook_request)?
-        .into_json()?;
+        let response: WebhookResponse = reqwest::Client::new()
+                    .request(method, url)
+                    .json(&webhook_request)
+                    .query(&[("wait", "true")])
+                    .send()
+                    .await?
+                    .json()
+                    .await?;
         self.message_id = Some(response.id);
         Ok(())
     }
