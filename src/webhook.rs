@@ -50,7 +50,7 @@ impl Webhook {
                 let placeholder = match event {
                     EventType::ClientConnect | EventType::ClientDisconnect => "",
                     EventType::Auth => "\n Password: ",
-                    EventType::RunCommand => "\n Command:",
+                    EventType::RunCommand => "\n Command: ",
                 };
                 descr.push_str(&gen_codeblock(format!(
                     "\n{}{placeholder}{}",
