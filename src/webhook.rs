@@ -40,7 +40,7 @@ impl Webhook {
                 self.create().unwrap();
             }
             Some(_) => {
-                let mut descr = self
+                let mut desc = self
                     .message_embed
                     .clone()
                     .unwrap()
@@ -51,7 +51,7 @@ impl Webhook {
                     EventType::Auth => "\n Password: ",
                     EventType::RunCommand => "\n Command: ",
                 };
-                descr.push_str(&gen_codeblock(format!(
+                desc.push_str(&gen_codeblock(format!(
                     "\n{}{placeholder}{}",
                     event.to_string(),
                     payload.clone().unwrap_or("".to_string())
@@ -62,7 +62,7 @@ impl Webhook {
                     } // change color to red if client disconnected
                     _ => {}
                 }
-                self.message_embed.as_mut().unwrap().description = Some(descr);
+                self.message_embed.as_mut().unwrap().description = Some(desc);
                 self.update().unwrap();
             }
         }
