@@ -1,6 +1,6 @@
 # rpot
 
-Rpot is a very basic rpot honeypot that logs passwords and executed commands
+Rpot is a very basic RCon (remote console) honeypot that logs passwords and executed commands
 # Usage:
 ## Running
 ```bash
