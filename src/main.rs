@@ -1,4 +1,4 @@
-mod convertions;
+mod conversions;
 mod generator;
 mod model;
 mod webhook;
@@ -93,7 +93,7 @@ fn handle_client(
 
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream
-                            .write(&response_packet.to_u8_arr())
+                            .write(&response_packet.to_bytes())
                             .expect("Failed to write to stream");
                     }
 
@@ -118,7 +118,7 @@ fn handle_client(
                                     packet.request_id.clone(),
                                     command_response.to_string(),
                                 )
-                                .to_u8_arr(),
+                                .to_bytes(),
                             )
                             .expect("Failed to write to stream");
                     }
