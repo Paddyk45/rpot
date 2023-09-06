@@ -1,15 +1,17 @@
 mod conversions;
 mod generator;
 mod model;
-mod webhook;
+mod logging;
 mod webhook_model;
+mod events;
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
 
-use crate::model::*;
+use crate::{model::*, logging::logging::{EventLoggerType, Logger}};
+use crate::events::ClientEventType;
 
 #[tokio::main]
 async fn main() {
@@ -27,16 +29,23 @@ async fn main() {
     while let Ok(stream) = listener.accept().await {
         let stream = stream.0;
         let webhook_url = webhook_url.clone();
-        println!(
-            "Connection to {} opened",
-            stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
-        );
+        let peer_addr = stream.peer_addr().unwrap().to_string();
+        let mut event_loggers: Vec<EventLoggerType> = vec![];
+        event_loggers.push(EventLoggerType::StdOut);
+        if let Some(webhook_url) = webhook_url.clone() {
+            event_loggers.push(EventLoggerType::DiscordWebhook(
+                Webhook::new(stream.peer_addr().unwrap().to_string(), &webhook_url)
+            ))
+        }
+        let logger = Logger::new(event_loggers, peer_addr);
+        logger.log(ClientEventType::Connect, None).await.expect("Failed to log event");
 
         let peer_addr = stream.peer_addr().unwrap().to_string();
         tokio::spawn(async move {
             match handle_client(
                 stream,
-                &mut webhook_url.map(|url| Webhook::new(peer_addr, url)),
+                &mut webhook_url.clone().map(|url| Webhook::new(peer_addr, &url)),
+                logger
             )
             .await
             {
@@ -50,13 +59,10 @@ async fn main() {
 async fn handle_client(
     mut stream: TcpStream,
     webhook: &mut Option<Webhook>,
+    logger: Logger
 ) -> anyhow::Result<()> {
-    if let Some(webhook) = webhook {
-        webhook
-            .push(EventType::ClientConnect, None)
-            .await
-            .expect("Failed to push event to Webhook");
-    }
+    let peer_addr: String = stream.peer_addr().unwrap().to_string();
+    logger.log(ClientEventType::Connect, None).await.expect("Failed to log event");
     loop {
         let mut read = [0; 1024];
         match stream.read(&mut read).await {
@@ -64,32 +70,13 @@ async fn handle_client(
                 if n == 0 {
                     // connection was closed
                     println!("Connection to {} closed", stream.peer_addr()?);
-                    if let Some(webhook) = webhook {
-                        webhook
-                            .push(EventType::ClientDisconnect, None)
-                            .await
-                            .expect("Failed to push event to Webhook");
-                    }
                     break;
                 }
                 let packet: Packet =
                     Packet::from_u8_arr(&read).expect("Failed to deserialize recieved packet");
-                println!(
-                    "Packet from {}:\n Length: {}\n Request ID: {}\n Request Type: {:?}\n Payload: {}",
-                    stream.peer_addr()?,
-                    packet.length.unwrap(),
-                    packet.request_id,
-                    packet.packet_type,
-                    strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or("empty".to_string()))
-                );
                 match packet.packet_type {
                     PacketType::Login => {
-                        if let Some(webhook) = webhook {
-                            webhook
-                                .push(EventType::Auth, packet.payload)
-                                .await
-                                .expect("Failed to push event to Webhook");
-                        }
+                        logger.log(ClientEventType::Auth, packet.payload).await.expect("Failed to log event");
 
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream
@@ -100,12 +87,7 @@ async fn handle_client(
 
                     PacketType::RunCommand => {
                         let command = packet.payload.clone().unwrap_or("".to_string());
-                        if let Some(webhook) = webhook {
-                            webhook
-                                .push(EventType::RunCommand, packet.payload)
-                                .await
-                                .expect("Failed to push event to Webhook");
-                        }
+                        logger.log(ClientEventType::RunCommand, packet.payload).await.expect("Failed to log event");
                         let command_response =
                             match command.as_str().split_whitespace().next().unwrap_or("") {
                                 "seed" => "Seed: [69420]",

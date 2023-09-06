@@ -1,14 +1,26 @@
-use crate::model::{EventType, Webhook};
+use crate::model::Webhook;
 use crate::webhook_model::*;
+use crate::events::ClientEventType;
+
+use super::traits::RpotLogger;
 fn gen_codeblock(inp: String) -> String {
     format!("```{}```", inp)
 }
 
+impl RpotLogger for Webhook {
+    fn handler(event_type: ClientEventType, payload: String, data: super::logging::LoggerData) {
+        
+    }
+    fn create(data: super::logging::LoggerData) -> Self {
+        
+    }
+}
+
 impl Webhook {
-    pub fn new(peer_addr: String, webhook_url: String) -> Webhook {
+    pub fn new(peer_addr: String, webhook_url: &String) -> Webhook {
         Webhook {
             peer_addr: peer_addr,
-            webhook_url: webhook_url,
+            webhook_url: webhook_url.to_string(),
             message_id: None,
             message_embed: None,
         }
@@ -16,13 +28,13 @@ impl Webhook {
 
     pub async fn push(
         &mut self,
-        event: EventType,
+        event: ClientEventType,
         payload: Option<String>,
     ) -> anyhow::Result<()> {
         match self.message_id.clone() {
             None => {
                 match event {
-                    EventType::ClientConnect => {}
+                    ClientEventType::Connect => {}
                     _ => panic!(
                         "You can only push to a new Webhook when the event type is ClientConnect"
                     ),
@@ -47,9 +59,9 @@ impl Webhook {
                     .description
                     .unwrap_or("".to_string());
                 let placeholder = match event {
-                    EventType::ClientConnect | EventType::ClientDisconnect => "",
-                    EventType::Auth => "\n Password: ",
-                    EventType::RunCommand => "\n Command: ",
+                    ClientEventType::Connect | ClientEventType::Disconnect => "",
+                    ClientEventType::Auth => "\n Password: ",
+                    ClientEventType::RunCommand => "\n Command: ",
                 };
                 desc.push_str(&gen_codeblock(format!(
                     "\n{}{placeholder}{}",
@@ -57,7 +69,7 @@ impl Webhook {
                     payload.clone().unwrap_or("".to_string().replace("`", "")) // remove backticks so you can't end codeblock
                 )));
                 match event {
-                    EventType::ClientDisconnect => {
+                    ClientEventType::Disconnect => {
                         self.message_embed.as_mut().unwrap().color = 15672064
                     } // change color to red if client disconnected
                     _ => {}

@@ -19,25 +19,7 @@ pub enum PacketType {
     MultiPacketResponse, // Packet type: 0
 }
 
-pub enum EventType {
-    ClientConnect,
-    Auth,
-    RunCommand,
-    ClientDisconnect,
-}
-
-impl fmt::Display for EventType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            EventType::ClientConnect => write!(f, "Client connected"),
-            EventType::RunCommand => write!(f, "Client executed command"),
-            EventType::ClientDisconnect => write!(f, "Client disconnected"),
-            EventType::Auth => write!(f, "Client logged in"),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Webhook {
     pub peer_addr: String,
     pub webhook_url: String,
