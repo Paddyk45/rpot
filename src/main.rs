@@ -11,6 +11,7 @@ use tokio::{
 
 use crate::model::*;
 
+// This is based on https://gist.github.com/fortruce/828bcc3499eb291e7e17
 #[tokio::main]
 async fn main() {
     let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("0.0.0.0".to_string());
