@@ -36,11 +36,3 @@ impl fmt::Display for EventType {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct Webhook {
-    pub peer_addr: String,
-    pub webhook_url: String,
-    pub message_id: Option<String>,
-    pub message_embed: Option<Embed>,
-}

@@ -1,4 +1,4 @@
-use crate::model::{EventType, Webhook};
+use crate::model::{EventType};
 use crate::webhook_model::*;
 fn gen_codeblock(inp: String) -> String {
     format!("```{}```", inp)

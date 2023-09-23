@@ -8,6 +8,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
+use webhook_model::Webhook;
 
 use crate::model::*;
 
