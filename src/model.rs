@@ -1,7 +1,5 @@
 use core::fmt;
 
-use crate::webhook_model::Embed;
-
 #[derive(Debug, Default)]
 pub struct Packet {
     pub length: Option<i32>,

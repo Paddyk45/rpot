@@ -8,7 +8,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
-use webhook_model::Webhook;
+use webhook_model::{MaybeWebhook, Webhook};
 
 use crate::model::*;
 
@@ -33,15 +33,11 @@ async fn main() {
             "Connection to {} opened",
             stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
         );
-
         let peer_addr = stream.peer_addr().unwrap().to_string();
+        let x = webhook_url.map(|url| Webhook::new(peer_addr, url));
+        let mut webhook: MaybeWebhook = x.into();
         tokio::spawn(async move {
-            match handle_client(
-                stream,
-                &mut webhook_url.map(|url| Webhook::new(peer_addr, url)),
-            )
-            .await
-            {
+            match handle_client(stream, &mut webhook).await {
                 Ok(()) => {}
                 Err(err) => println!("Error handling client: {}", err),
             };
@@ -49,13 +45,9 @@ async fn main() {
     }
 }
 
-async fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) -> anyhow::Result<()> {
-    if let Some(webhook) = webhook {
-        webhook
-            .push(EventType::ClientConnect, None)
-            .await
-            .expect("Failed to push event to Webhook");
-    }
+async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> anyhow::Result<()> {
+    webhook.send_if_some(EventType::ClientConnect, None).await?;
+
     loop {
         let mut read = [0; 1024];
         match stream.read(&mut read).await {
@@ -63,12 +55,10 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) -> 
                 if n == 0 {
                     // connection was closed
                     println!("Connection to {} closed", stream.peer_addr()?);
-                    if let Some(webhook) = webhook {
-                        webhook
-                            .push(EventType::ClientDisconnect, None)
-                            .await
-                            .expect("Failed to push event to Webhook");
-                    }
+                    webhook
+                        .send_if_some(EventType::ClientDisconnect, None)
+                        .await?;
+
                     break;
                 }
                 let packet: Packet =
@@ -83,13 +73,9 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) -> 
                 );
                 match packet.packet_type {
                     PacketType::Login => {
-                        if let Some(webhook) = webhook {
-                            webhook
-                                .push(EventType::Auth, packet.payload)
-                                .await
-                                .expect("Failed to push event to Webhook");
-                        }
-
+                        webhook
+                            .send_if_some(EventType::Auth, packet.payload)
+                            .await?;
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream
                             .write(&response_packet.to_bytes())
@@ -99,12 +85,9 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut Option<Webhook>) -> 
 
                     PacketType::RunCommand => {
                         let command = packet.payload.clone().unwrap_or("".to_string());
-                        if let Some(webhook) = webhook {
-                            webhook
-                                .push(EventType::RunCommand, packet.payload)
-                                .await
-                                .expect("Failed to push event to Webhook");
-                        }
+                        webhook
+                            .send_if_some(EventType::RunCommand, packet.payload)
+                            .await?;
                         let command_response =
                             match command.as_str().split_whitespace().next().unwrap_or("") {
                                 "seed" => "Seed: [69420]",

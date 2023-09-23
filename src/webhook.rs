@@ -6,6 +6,28 @@ fn gen_codeblock(inp: String) -> String {
     format!("```{}```", inp)
 }
 
+impl From<Option<Webhook>> for MaybeWebhook {
+    fn from(value: Option<Webhook>) -> Self {
+        MaybeWebhook { webhook: value }
+    }
+}
+
+impl MaybeWebhook {
+    pub async fn send_if_some(
+        &mut self,
+        event_type: EventType,
+        payload: Option<String>,
+    ) -> anyhow::Result<()> {
+        match self.webhook.as_mut() {
+            Some(webhook) => {
+                webhook.push(event_type, payload).await?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+}
+
 impl Webhook {
     pub fn new(peer_addr: String, webhook_url: String) -> Webhook {
         Webhook {

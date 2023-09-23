@@ -54,3 +54,7 @@ pub struct Webhook {
     pub message_id: Option<String>,
     pub message_embed: Option<Embed>,
 }
+
+pub struct MaybeWebhook {
+    pub webhook: Option<Webhook>,
+}
