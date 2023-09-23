@@ -54,7 +54,7 @@ impl Webhook {
                 desc.push_str(&gen_codeblock(format!(
                     "\n{}{placeholder}{}",
                     event.to_string(),
-                    payload.clone().unwrap_or("".to_string().replace("`", "")) // remove backticks so you can't end codeblock
+                    payload.clone().unwrap_or("".to_string()).replace("`", "") // remove backticks so you can't end codeblock
                 )));
                 match event {
                     EventType::ClientDisconnect => {
