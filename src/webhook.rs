@@ -1,4 +1,6 @@
-use crate::model::{EventType};
+use anyhow::bail;
+
+use crate::model::EventType;
 use crate::webhook_model::*;
 fn gen_codeblock(inp: String) -> String {
     format!("```{}```", inp)
@@ -14,16 +16,12 @@ impl Webhook {
         }
     }
 
-    pub async fn push(
-        &mut self,
-        event: EventType,
-        payload: Option<String>,
-    ) -> anyhow::Result<()> {
+    pub async fn push(&mut self, event: EventType, payload: Option<String>) -> anyhow::Result<()> {
         match self.message_id.clone() {
             None => {
                 match event {
                     EventType::ClientConnect => {}
-                    _ => panic!(
+                    _ => anyhow::bail!(
                         "You can only push to a new Webhook when the event type is ClientConnect"
                     ),
                 }
@@ -71,13 +69,17 @@ impl Webhook {
 
     async fn create_or_update(&mut self) -> anyhow::Result<()> {
         if self.message_embed.as_ref().is_none() {
-            panic!("Empty embed")
+            bail!("Empty Embed")
         }
         let (method, url) = match self.message_id {
             None => (reqwest::Method::POST, self.webhook_url.clone()),
             Some(_) => (
                 reqwest::Method::PATCH,
-                format!("{}/messages/{}", self.webhook_url, self.message_id.clone().unwrap()),
+                format!(
+                    "{}/messages/{}",
+                    self.webhook_url,
+                    self.message_id.clone().unwrap()
+                ),
             ),
         };
         let mut webhook_request: WebhookRequest = WebhookRequest::new();
@@ -85,13 +87,13 @@ impl Webhook {
             .embeds
             .push(self.message_embed.clone().unwrap());
         let response: WebhookResponse = reqwest::Client::new()
-                    .request(method, url)
-                    .json(&webhook_request)
-                    .query(&[("wait", "true")])
-                    .send()
-                    .await?
-                    .json()
-                    .await?;
+            .request(method, url)
+            .json(&webhook_request)
+            .query(&[("wait", "true")])
+            .send()
+            .await?
+            .json()
+            .await?;
         self.message_id = Some(response.id);
         Ok(())
     }
