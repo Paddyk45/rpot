@@ -55,10 +55,10 @@ impl Packet {
 
         // LENGTH (32 bit integer - 4 bytes)
         if self.length.is_none() {
-            let mut length: u64 = 0;
+            let mut length: i32 = 0;
             length += 4; // request id (i32 = 4 bytes)
             length += 4; // packet type (i32 = 4 bytes)
-            length += self.payload.clone().unwrap_or_default().len() as u64 + 1; // Payload length + NULL-terminator (payload length + 1 byte)
+            length += self.payload.clone().unwrap_or_default().len() as i32 + 1; // Payload length + NULL-terminator (payload length + 1 byte)
             length += 1; // NULL-terminator (1 byte)
             buffer.extend_from_slice(&length.to_le_bytes());
         } else {

@@ -8,13 +8,24 @@ pub struct Packet {
     pub payload: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum PacketType {
     Login, // Packet type: 3
     Auth,  // Packet type: 2
     #[default]
     RunCommand, // Packet type: 2
     MultiPacketResponse, // Packet type: 0
+}
+
+impl Into<EventType> for PacketType {
+    fn into(self) -> EventType {
+        match self {
+            Self::RunCommand => EventType::RunCommand,
+            Self::Auth => EventType::Auth,
+            Self::Login => EventType::Auth,
+            _ => EventType::RunCommand,
+        }
+    }
 }
 
 pub enum EventType {

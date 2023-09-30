@@ -8,6 +8,10 @@ fn gen_codeblock<T: ToString>(inp: &T) -> String {
     format!("```{}```", inp.to_string())
 }
 
+pub fn print_webhook_err(err: anyhow::Error) {
+    println!("Error sending to webhook: {}", err)
+}
+
 impl From<Option<Webhook>> for MaybeWebhook {
     fn from(value: Option<Webhook>) -> Self {
         Self(value)
@@ -40,11 +44,10 @@ impl Webhook {
     pub async fn push(&mut self, event: EventType, payload: Option<String>) -> anyhow::Result<()> {
         match self.message_id.clone() {
             None => {
-                match event {
-                    EventType::ClientConnect => {}
-                    _ => anyhow::bail!(
+                if !matches!(event, EventType::ClientConnect) {
+                    anyhow::bail!(
                         "You can only push to a new Webhook when the event type is ClientConnect"
-                    ),
+                    )
                 }
                 self.message_embed = Some(Embed {
                     author: Author {
@@ -57,9 +60,12 @@ impl Webhook {
                     },
                 });
 
-                self.create_or_update().await.unwrap();
+                self.create_or_update().await?;
             }
-            Some(_) => {
+            Some(msgid) => {
+                if msgid == "ERROR".to_string() {
+                    bail!("Initial Webhook request returned error")
+                }
                 let mut desc = self
                     .message_embed
                     .clone()
@@ -83,7 +89,7 @@ impl Webhook {
                 }
 
                 self.message_embed.as_mut().unwrap().description = Some(desc);
-                self.create_or_update().await.unwrap();
+                self.create_or_update().await?;
             }
         }
         Ok(())
@@ -104,14 +110,17 @@ impl Webhook {
         webhook_request
             .embeds
             .push(self.message_embed.clone().unwrap());
-        let response: WebhookResponse = reqwest::Client::new()
+        let response = reqwest::Client::new()
             .request(method, url)
             .json(&webhook_request)
             .query(&[("wait", "true")])
             .send()
-            .await?
-            .json()
             .await?;
+        if response.status() != 200 {
+            self.message_id = Some("ERROR".to_string());
+            bail!(format!("Discord API returned non-200 status code. Body: {}", response.text().await?))
+        }
+        let response: WebhookResponse = response.json().await?;
         self.message_id = Some(response.id);
         Ok(())
     }

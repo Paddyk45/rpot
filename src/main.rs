@@ -4,6 +4,7 @@ mod model;
 mod webhook;
 mod webhook_model;
 
+use anyhow::bail;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -26,24 +27,29 @@ async fn main() {
     while let Ok(stream) = listener.accept().await {
         let stream = stream.0;
         let webhook_url = webhook_url.clone();
-        println!(
-            "Connection to {} opened",
-            stream.peer_addr().unwrap_or("0.0.0.0:1".parse().unwrap())
-        );
+        println!("Connection to {} opened", stream.peer_addr().unwrap());
         let peer_addr = stream.peer_addr().unwrap().to_string();
-        let x = webhook_url.map(|url| Webhook::new(peer_addr, url));
+        let x = webhook_url.map(|url| Webhook::new(peer_addr.clone(), url));
         let mut webhook: MaybeWebhook = x.into();
         tokio::spawn(async move {
             match handle_client(stream, &mut webhook).await {
                 Ok(()) => {}
                 Err(err) => println!("Error handling client: {}", err),
             };
+            println!("Connection to {} closed", peer_addr.clone());
+            let _ = webhook
+                .send_if_some(EventType::ClientDisconnect, None)
+                .await
+                .map_err(webhook::print_webhook_err);
         });
     }
 }
 
 async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> anyhow::Result<()> {
-    webhook.send_if_some(EventType::ClientConnect, None).await?;
+    let _ = webhook
+        .send_if_some(EventType::ClientConnect, None)
+        .await
+        .map_err(webhook::print_webhook_err);
 
     loop {
         let mut read = [0; 1024];
@@ -51,11 +57,6 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
             Ok(n) => {
                 if n == 0 {
                     // connection was closed
-                    println!("Connection to {} closed", stream.peer_addr()?);
-                    webhook
-                        .send_if_some(EventType::ClientDisconnect, None)
-                        .await?;
-
                     break;
                 }
                 let packet: Packet =
@@ -68,11 +69,12 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     packet.packet_type,
                     strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or("empty".to_string()))
                 );
+                let _ = webhook
+                    .send_if_some(packet.packet_type.into(), packet.payload.clone())
+                    .await
+                    .map_err(webhook::print_webhook_err);
                 match packet.packet_type {
                     PacketType::Login => {
-                        webhook
-                            .send_if_some(EventType::Auth, packet.payload)
-                            .await?;
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream
                             .write_all(&response_packet.to_bytes())
@@ -82,9 +84,6 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
 
                     PacketType::RunCommand => {
                         let command = packet.payload.clone().unwrap_or_default();
-                        webhook
-                            .send_if_some(EventType::RunCommand, packet.payload)
-                            .await?;
                         let command_response = match command
                             .as_str()
                             .split_whitespace()
@@ -111,7 +110,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     _ => println!("Client sent invalid packet type"),
                 }
             }
-            Err(err) => panic!("{}", err),
+            Err(err) => bail!(err),
         }
     }
     Ok(())
