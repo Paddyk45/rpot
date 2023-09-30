@@ -10,17 +10,14 @@ use tokio::{
 };
 use webhook_model::{MaybeWebhook, Webhook};
 
-use crate::model::*;
+use crate::model::{EventType, Packet, PacketType};
 
 // This is based on https://gist.github.com/fortruce/828bcc3499eb291e7e17
 #[tokio::main]
 async fn main() {
     let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("0.0.0.0".to_string());
     let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or("25575".to_string());
-    let webhook_url = match std::env::var("RPOT_WEBHOOK_URL") {
-        Ok(val) => Some(val),
-        Err(_) => None,
-    };
+    let webhook_url = std::env::var("RPOT_WEBHOOK_URL").ok();
     let listener = TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap()))
         .await
         .unwrap();
@@ -78,28 +75,31 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                             .await?;
                         let response_packet = Packet::gen_auth_success(packet.request_id);
                         stream
-                            .write(&response_packet.to_bytes())
+                            .write_all(&response_packet.to_bytes())
                             .await
                             .expect("Failed to write to stream");
                     }
 
                     PacketType::RunCommand => {
-                        let command = packet.payload.clone().unwrap_or("".to_string());
+                        let command = packet.payload.clone().unwrap_or_default();
                         webhook
                             .send_if_some(EventType::RunCommand, packet.payload)
                             .await?;
-                        let command_response =
-                            match command.as_str().split_whitespace().next().unwrap_or("") {
-                                "seed" => "Seed: [69420]",
-                                "say" => "",
-                                "" => "",
-                                _ => "Unknown command. Type \"/help\" for help.",
-                            };
+                        let command_response = match command
+                            .as_str()
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or_default()
+                        {
+                            "seed" => "Seed: [69420]",
+                            "say" | "" => "",
+                            _ => "Unknown command. Type \"/help\" for help.",
+                        };
 
                         stream
-                            .write(
+                            .write_all(
                                 &Packet::gen_response(
-                                    packet.request_id.clone(),
+                                    packet.request_id,
                                     command_response.to_string(),
                                 )
                                 .to_bytes(),

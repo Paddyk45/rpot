@@ -1,14 +1,16 @@
 use anyhow::bail;
 
 use crate::model::EventType;
-use crate::webhook_model::*;
-fn gen_codeblock(inp: String) -> String {
-    format!("```{}```", inp)
+use crate::webhook_model::{
+    Author, Embed, Footer, MaybeWebhook, Webhook, WebhookRequest, WebhookResponse,
+};
+fn gen_codeblock<T: ToString>(inp: &T) -> String {
+    format!("```{}```", inp.to_string())
 }
 
 impl From<Option<Webhook>> for MaybeWebhook {
     fn from(value: Option<Webhook>) -> Self {
-        MaybeWebhook(value)
+        Self(value)
     }
 }
 
@@ -18,21 +20,18 @@ impl MaybeWebhook {
         event_type: EventType,
         payload: Option<String>,
     ) -> anyhow::Result<()> {
-        match self.0.as_mut() {
-            Some(webhook) => {
-                webhook.push(event_type, payload).await?;
-            }
-            _ => {}
+        if let Some(webhook) = self.0.as_mut() {
+            webhook.push(event_type, payload).await?;
         }
         Ok(())
     }
 }
 
 impl Webhook {
-    pub fn new(peer_addr: String, webhook_url: String) -> Webhook {
-        Webhook {
-            peer_addr: peer_addr,
-            webhook_url: webhook_url,
+    pub fn new(peer_addr: String, webhook_url: String) -> Self {
+        Self {
+            peer_addr,
+            webhook_url,
             message_id: None,
             message_embed: None,
         }
@@ -47,16 +46,17 @@ impl Webhook {
                         "You can only push to a new Webhook when the event type is ClientConnect"
                     ),
                 }
-                let mut embed: Embed = Embed::new();
-                embed.author = Author {
-                    name: self.peer_addr.clone(),
-                };
-                embed.color = 16746240; // orange
-                embed.description = Some(gen_codeblock("Client connected".to_string()));
-                embed.footer = Footer {
-                    text: "RPot \u{2022} https://github.com/Paddyk45/rpot".to_string(),
-                };
-                self.message_embed = Some(embed);
+                self.message_embed = Some(Embed {
+                    author: Author {
+                        name: self.peer_addr.clone(),
+                    },
+                    color: 0xFF_87_00, // orange
+                    description: Some(gen_codeblock(&"Client connected")),
+                    footer: Footer {
+                        text: "RPot \u{2022} https://github.com/Paddyk45/rpot".to_string(),
+                    },
+                });
+
                 self.create_or_update().await.unwrap();
             }
             Some(_) => {
@@ -65,23 +65,23 @@ impl Webhook {
                     .clone()
                     .unwrap()
                     .description
-                    .unwrap_or("".to_string());
+                    .unwrap_or_default();
                 let placeholder = match event {
                     EventType::ClientConnect | EventType::ClientDisconnect => "",
                     EventType::Auth => "\n Password: ",
                     EventType::RunCommand => "\n Command: ",
                 };
-                desc.push_str(&gen_codeblock(format!(
+                desc.push_str(&gen_codeblock(&format!(
                     "\n{}{placeholder}{}",
                     event.to_string(),
-                    payload.clone().unwrap_or("".to_string()).replace("`", "") // remove backticks so you can't end codeblock
+                    payload.clone().unwrap_or_default().replace('`', "") // remove backticks so you can't end codeblock
                 )));
-                match event {
-                    EventType::ClientDisconnect => {
-                        self.message_embed.as_mut().unwrap().color = 15672064
-                    } // change color to red if client disconnected
-                    _ => {}
+                // change color to red if client disconnected
+                #[allow(clippy::unreadable_literal)]
+                if matches!(event, EventType::ClientDisconnect) {
+                    self.message_embed.as_mut().unwrap().color = 15672064;
                 }
+
                 self.message_embed.as_mut().unwrap().description = Some(desc);
                 self.create_or_update().await.unwrap();
             }
@@ -93,15 +93,11 @@ impl Webhook {
         if self.message_embed.as_ref().is_none() {
             bail!("Empty Embed")
         }
-        let (method, url) = match self.message_id {
+        let (method, url) = match self.message_id.clone() {
             None => (reqwest::Method::POST, self.webhook_url.clone()),
-            Some(_) => (
+            Some(msgid) => (
                 reqwest::Method::PATCH,
-                format!(
-                    "{}/messages/{}",
-                    self.webhook_url,
-                    self.message_id.clone().unwrap()
-                ),
+                format!("{}/messages/{}", self.webhook_url, msgid),
             ),
         };
         let mut webhook_request: WebhookRequest = WebhookRequest::new();

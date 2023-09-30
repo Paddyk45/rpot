@@ -27,10 +27,10 @@ pub enum EventType {
 impl fmt::Display for EventType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EventType::ClientConnect => write!(f, "Client connected"),
-            EventType::RunCommand => write!(f, "Client executed command"),
-            EventType::ClientDisconnect => write!(f, "Client disconnected"),
-            EventType::Auth => write!(f, "Client logged in"),
+            Self::ClientConnect => write!(f, "Client connected"),
+            Self::RunCommand => write!(f, "Client executed command"),
+            Self::ClientDisconnect => write!(f, "Client disconnected"),
+            Self::Auth => write!(f, "Client logged in"),
         }
     }
 }

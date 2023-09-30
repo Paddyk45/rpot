@@ -5,8 +5,8 @@ pub struct WebhookRequest {
     pub embeds: Vec<Embed>,
 }
 impl WebhookRequest {
-    pub fn new() -> WebhookRequest {
-        WebhookRequest { embeds: vec![] }
+    pub fn new() -> Self {
+        Self { embeds: vec![] }
     }
 }
 
@@ -16,20 +16,6 @@ pub struct Embed {
     pub description: Option<String>,
     pub color: u32,
     pub footer: Footer,
-}
-impl Embed {
-    pub fn new() -> Embed {
-        Embed {
-            author: Author {
-                name: "".to_string(),
-            },
-            description: None,
-            color: 0,
-            footer: Footer {
-                text: "".to_string(),
-            },
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Clone)]
