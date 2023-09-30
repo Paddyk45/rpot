@@ -83,7 +83,6 @@ impl Webhook {
                     payload.clone().unwrap_or_default().replace('`', "") // remove backticks so you can't end codeblock
                 )));
                 // change color to red if client disconnected
-                #[allow(clippy::unreadable_literal)]
                 if matches!(event, EventType::ClientDisconnect) {
                     self.message_embed.as_mut().unwrap().color = 15672064;
                 }
