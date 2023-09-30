@@ -117,7 +117,10 @@ impl Webhook {
             .await?;
         if response.status() != 200 {
             self.message_id = Some("ERROR".to_string());
-            bail!(format!("Discord API returned non-200 status code. Body: {}", response.text().await?))
+            bail!(format!(
+                "Discord API returned non-200 status code. Body: {}",
+                response.text().await?
+            ))
         }
         let response: WebhookResponse = response.json().await?;
         self.message_id = Some(response.id);
