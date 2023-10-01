@@ -54,16 +54,18 @@ impl Packet {
         let mut buffer: Vec<u8> = Vec::new();
 
         // LENGTH (32 bit integer - 4 bytes)
-        if self.length.is_none() {
-            let mut length: i32 = 0;
-            length += 4; // request id (i32 = 4 bytes)
-            length += 4; // packet type (i32 = 4 bytes)
-            length += self.payload.clone().unwrap_or_default().len() as i32 + 1; // Payload length + NULL-terminator (payload length + 1 byte)
-            length += 1; // NULL-terminator (1 byte)
-            buffer.extend_from_slice(&length.to_le_bytes());
-        } else {
-            buffer.extend_from_slice(&self.length.unwrap().to_le_bytes());
-        }
+        buffer.extend_from_slice(
+            &match self.length {
+                None => {
+                    4  // request id (i32 = 4 bytes)
+                     + 4 // packet type (i32 = 4 bytes)
+                     + self.payload.clone().unwrap_or_default().len() as i32 + 1 // Payload length + NULL-terminator (payload length + 1 byte)
+                     + 1 // NULL-terminator (1 byte)
+                }
+                Some(len) => len,
+            }
+            .to_le_bytes(),
+        );
 
         // REQUEST ID (32 bit integer - 4 bytes)
         let request_id_buf = self.request_id.to_le_bytes();
@@ -74,7 +76,7 @@ impl Packet {
         buffer.extend_from_slice(&request_type_buf);
 
         // PAYLOAD (00-terminated string)
-        if let Some(pl) = self.payload.clone() {
+        if let Some(pl) = self.payload {
             buffer.extend_from_slice(pl.as_bytes());
         }
         buffer.push(0); // terminate string

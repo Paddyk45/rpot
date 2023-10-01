@@ -1,3 +1,5 @@
+#![warn(clippy::all, clippy::nursery)]
+#![allow(clippy::missing_const_for_fn, clippy::redundant_pub_crate)]
 mod conversions;
 mod generator;
 mod handlers;
@@ -23,8 +25,8 @@ use crate::model::{EventType, Packet, PacketType};
 // This is based on https://gist.github.com/fortruce/828bcc3499eb291e7e17
 #[tokio::main]
 async fn main() {
-    let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or("0.0.0.0".to_string());
-    let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or("25575".to_string());
+    let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or_else(|_| "25575".to_string());
     let webhook_url = std::env::var("RPOT_WEBHOOK_URL").ok();
     let listener = TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap()))
         .await
@@ -84,7 +86,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     packet.length.unwrap(),
                     packet.request_id,
                     packet.packet_type,
-                    strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or("empty".to_string()))
+                    strip_ansi_escapes::strip_str(packet.payload.clone().unwrap_or_else(|| "empty".to_string()))
                 );
                 let _ = webhook
                     .send_if_some(packet.packet_type.into(), packet.payload.clone())

@@ -20,10 +20,10 @@ pub enum PacketType {
 impl From<PacketType> for EventType {
     fn from(val: PacketType) -> Self {
         match val {
-            PacketType::RunCommand => EventType::RunCommand,
-            PacketType::Auth => EventType::Auth,
-            PacketType::Login => EventType::Auth,
-            _ => EventType::Invalid,
+            PacketType::RunCommand => Self::RunCommand,
+            PacketType::Auth => Self::Auth,
+            PacketType::Login => Self::Auth,
+            _ => Self::Invalid,
         }
     }
 }
