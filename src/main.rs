@@ -64,7 +64,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     break;
                 }
                 let packet: Packet =
-                    Packet::from_u8_arr(&read).expect("Failed to deserialize recieved packet");
+                    Packet::from_u8_arr(&read).expect("Failed to deserialize received packet");
                 println!(
                     "Packet from {}:\n Length: {}\n Request ID: {}\n Request Type: {:?}\n Payload: {}",
                     stream.peer_addr()?,

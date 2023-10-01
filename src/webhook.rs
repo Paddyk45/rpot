@@ -45,7 +45,7 @@ impl Webhook {
         match self.message_id.clone() {
             None => {
                 if !matches!(event, EventType::ClientConnect) {
-                    anyhow::bail!(
+                    bail!(
                         "You can only push to a new Webhook when the event type is ClientConnect"
                     )
                 }
