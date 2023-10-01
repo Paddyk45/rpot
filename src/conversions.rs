@@ -74,9 +74,8 @@ impl Packet {
         buffer.extend_from_slice(&request_type_buf);
 
         // PAYLOAD (00-terminated string)
-        if self.payload.clone().is_some() {
-            let payload_buf = self.payload.clone().unwrap();
-            buffer.extend_from_slice(payload_buf.as_bytes());
+        if let Some(pl) = self.payload.clone() {
+            buffer.extend_from_slice(pl.as_bytes());
         }
         buffer.push(0); // terminate string
 
