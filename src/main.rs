@@ -6,12 +6,15 @@ mod webhook;
 mod webhook_model;
 
 use handlers::*;
+use std::process::exit;
 use std::time::Duration;
 
 use anyhow::bail;
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
+    select,
 };
 use webhook_model::{MaybeWebhook, Webhook};
 
@@ -26,6 +29,16 @@ async fn main() {
     let listener = TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap()))
         .await
         .unwrap();
+
+    tokio::spawn(async move {
+        let mut sigterm = signal(SignalKind::terminate()).unwrap();
+        select! {
+             _ = sigterm.recv() => {
+                    println!("Recieved SIGTERM, exiting...");
+                    exit(0)
+                }
+        }
+    });
 
     println!("Listening on {}:{}", bind_addr, bind_port);
     while let Ok(stream) = listener.accept().await {
