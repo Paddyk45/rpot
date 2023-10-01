@@ -3,6 +3,8 @@ mod generator;
 mod model;
 mod webhook;
 mod webhook_model;
+mod handlers;
+use handlers::*;
 
 use anyhow::bail;
 use tokio::{
@@ -73,44 +75,15 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     .send_if_some(packet.packet_type.into(), packet.payload.clone())
                     .await
                     .map_err(webhook::print_webhook_err);
-                match packet.packet_type {
-                    PacketType::Login => {
-                        let response_packet = &Packet::gen_auth_success(packet.request_id).into_vec();
-                        stream
-                            .write_all(response_packet)
-                            .await
-                            .expect("Failed to write to stream");
-                    }
 
-                    PacketType::RunCommand => {
-                        let command = packet.payload.clone().unwrap_or_default();
-                        let command_response = match command
-                            .as_str()
-                            .split_whitespace()
-                            .next()
-                            .unwrap_or_default()
-                        {
-                            "seed" => "Seed: [69420]",
-                            "say" | "" => "",
-                            _ => "Unknown command. Type \"/help\" for help.",
-                        };
-                        let response_packet = &Packet::gen_response(
-                            packet.request_id,
-                            command_response.to_string(),
-                        ).into_vec();
-                        stream
-                            .write_all(response_packet)
-                            .await
-                            .expect("Failed to write to stream");
-                    }
+                let handler: fn(Packet) -> Packet = match packet.packet_type {
+                    PacketType::Login => handler_login,
+                    PacketType::RunCommand => handler_runcommand,
+                    _ => handler_invalid
+                };
 
-                    _ => {
-                        println!("Client sent an invalid packet type: {}", n);
-                        let packet_id = packet.packet_type.as_i32();
-                        let response_packet = &Packet::gen_response(packet.request_id, format!("Unknown request {}", packet_id)).into_vec();
-                        stream.write_all(response_packet).await.expect("Failed to write to stream");
-                    }
-                }
+                let response_packet = &handler(packet).into_vec();
+                stream.write_all(response_packet).await.expect("Failed to write to stream");
             }
             Err(err) => bail!(err),
         }
