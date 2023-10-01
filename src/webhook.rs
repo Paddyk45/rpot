@@ -73,7 +73,9 @@ impl Webhook {
                     .description
                     .unwrap_or_default();
                 let placeholder = match event {
-                    EventType::ClientConnect | EventType::ClientDisconnect | EventType::Invalid=> "",
+                    EventType::ClientConnect | EventType::ClientDisconnect | EventType::Invalid => {
+                        ""
+                    }
                     EventType::Auth => "\n Password: ",
                     EventType::RunCommand => "\n Command: ",
                 };

@@ -10,10 +10,7 @@ pub fn handler_runcommand(packet: Packet) -> Packet {
     {
         "seed" => "Seed: [69420]",
         "say" | "" => "",
-        _ => "Unknown command. Type \"/help\" for help.",
+        _ => "Unknown command. Type \"/help\" for help.\n",
     };
-    Packet::gen_response(
-        packet.request_id,
-        command_response.to_string(),
-    )
+    Packet::gen_response(packet.request_id, command_response.to_string())
 }

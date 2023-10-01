@@ -1,10 +1,12 @@
 mod conversions;
 mod generator;
+mod handlers;
 mod model;
 mod webhook;
 mod webhook_model;
-mod handlers;
+
 use handlers::*;
+use std::time::Duration;
 
 use anyhow::bail;
 use tokio::{
@@ -78,12 +80,19 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
 
                 let handler: fn(Packet) -> Packet = match packet.packet_type {
                     PacketType::Login => handler_login,
-                    PacketType::RunCommand => handler_runcommand,
-                    _ => handler_invalid
+
+                    PacketType::RunCommand => {
+                        tokio::time::sleep(Duration::from_secs(1)).await; // Simulate delay for commands
+                        handler_runcommand
+                    }
+                    _ => handler_invalid,
                 };
 
                 let response_packet = &handler(packet).into_vec();
-                stream.write_all(response_packet).await.expect("Failed to write to stream");
+                stream
+                    .write_all(response_packet)
+                    .await
+                    .expect("Failed to write to stream");
             }
             Err(err) => bail!(err),
         }

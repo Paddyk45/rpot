@@ -92,7 +92,7 @@ impl PacketType {
             Self::Login => &3,
             Self::Auth | Self::RunCommand => &2,
             Self::MultiPacketResponse => &0,
-            Self::Invalid(n) => n
+            Self::Invalid(n) => n,
         }
     }
 }
