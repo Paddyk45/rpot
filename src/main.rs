@@ -75,9 +75,9 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     .map_err(webhook::print_webhook_err);
                 match packet.packet_type {
                     PacketType::Login => {
-                        let response_packet = Packet::gen_auth_success(packet.request_id);
+                        let response_packet = &Packet::gen_auth_success(packet.request_id).into_vec();
                         stream
-                            .write_all(&response_packet.to_bytes())
+                            .write_all(response_packet)
                             .await
                             .expect("Failed to write to stream");
                     }
@@ -94,20 +94,22 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                             "say" | "" => "",
                             _ => "Unknown command. Type \"/help\" for help.",
                         };
-
+                        let response_packet = &Packet::gen_response(
+                            packet.request_id,
+                            command_response.to_string(),
+                        ).into_vec();
                         stream
-                            .write_all(
-                                &Packet::gen_response(
-                                    packet.request_id,
-                                    command_response.to_string(),
-                                )
-                                .to_bytes(),
-                            )
+                            .write_all(response_packet)
                             .await
                             .expect("Failed to write to stream");
                     }
 
-                    _ => println!("Client sent invalid packet type"),
+                    _ => {
+                        println!("Client sent an invalid packet type: {}", n);
+                        let packet_id = packet.packet_type.as_i32();
+                        let response_packet = &Packet::gen_response(packet.request_id, format!("Unknown request {}", packet_id)).into_vec();
+                        stream.write_all(response_packet).await.expect("Failed to write to stream");
+                    }
                 }
             }
             Err(err) => bail!(err),

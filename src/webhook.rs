@@ -63,7 +63,7 @@ impl Webhook {
                 self.create_or_update().await?;
             }
             Some(msgid) => {
-                if msgid == "ERROR".to_string() {
+                if msgid == *"ERROR".to_string() {
                     bail!("Initial Webhook request returned error")
                 }
                 let mut desc = self
@@ -73,7 +73,7 @@ impl Webhook {
                     .description
                     .unwrap_or_default();
                 let placeholder = match event {
-                    EventType::ClientConnect | EventType::ClientDisconnect => "",
+                    EventType::ClientConnect | EventType::ClientDisconnect | EventType::Invalid=> "",
                     EventType::Auth => "\n Password: ",
                     EventType::RunCommand => "\n Command: ",
                 };

@@ -23,7 +23,7 @@ impl Packet {
         Self {
             length: None,
             request_id,
-            packet_type: crate::model::PacketType::Auth,
+            packet_type: crate::model::PacketType::MultiPacketResponse,
             payload: Some(payload),
         }
     }

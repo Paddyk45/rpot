@@ -1,6 +1,6 @@
 use core::fmt;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Packet {
     pub length: Option<i32>,
     pub request_id: i32,
@@ -8,24 +8,24 @@ pub struct Packet {
     pub payload: Option<String>,
 }
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum PacketType {
     Login, // Packet type: 3
     Auth,  // Packet type: 2
-    #[default]
     RunCommand, // Packet type: 2
     MultiPacketResponse, // Packet type: 0
+    Invalid(i32)
 }
 
-impl Into<EventType> for PacketType {
-    fn into(self) -> EventType {
-        match self {
-            Self::RunCommand => EventType::RunCommand,
-            Self::Auth => EventType::Auth,
-            Self::Login => EventType::Auth,
-            _ => EventType::RunCommand,
-        }
-    }
+impl From<PacketType> for EventType {
+      fn from(val: PacketType) -> Self {
+          match val {
+              PacketType::RunCommand => EventType::RunCommand,
+              PacketType::Auth => EventType::Auth,
+              PacketType::Login => EventType::Auth,
+              _ => EventType::Invalid
+          }
+      }
 }
 
 pub enum EventType {
@@ -33,6 +33,7 @@ pub enum EventType {
     Auth,
     RunCommand,
     ClientDisconnect,
+    Invalid
 }
 
 impl fmt::Display for EventType {
@@ -42,6 +43,7 @@ impl fmt::Display for EventType {
             Self::RunCommand => write!(f, "Client executed command"),
             Self::ClientDisconnect => write!(f, "Client disconnected"),
             Self::Auth => write!(f, "Client logged in"),
+            Self::Invalid => write!(f, "Invalid Event Type")
         }
     }
 }

@@ -17,7 +17,7 @@ impl Packet {
         Ok(Self {
             length: Some(Self::parse_length(length_slice)),
             request_id: Self::parse_request_id(request_id_slice),
-            packet_type: Self::parse_packet_type(packet_type_slice)?,
+            packet_type: Self::parse_packet_type(packet_type_slice),
             payload: Self::parse_payload(payload_vec),
         })
     }
@@ -30,13 +30,13 @@ impl Packet {
         i32::from_le_bytes(buffer)
     }
 
-    fn parse_packet_type(buffer: [u8; 4]) -> anyhow::Result<PacketType> {
-        let request_type = buffer[0];
+    fn parse_packet_type(buffer: [u8; 4]) -> PacketType {
+        let request_type = i32::from_le_bytes(buffer);
         match request_type {
-            0 => Ok(PacketType::MultiPacketResponse),
-            2 => Ok(PacketType::RunCommand),
-            3 => Ok(PacketType::Login),
-            _ => anyhow::bail!("Invalid request type"),
+            0 => PacketType::MultiPacketResponse,
+            2 => PacketType::RunCommand,
+            3 => PacketType::Login,
+            _ => PacketType::Invalid(request_type),
         }
     }
 
@@ -50,7 +50,7 @@ impl Packet {
 
 // To byte array
 impl Packet {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn into_vec(self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
 
         // LENGTH (32 bit integer - 4 bytes)
@@ -70,7 +70,7 @@ impl Packet {
         buffer.extend_from_slice(&request_id_buf);
 
         // REQUEST TYPE (32 bit integer - 4 bytes)
-        let request_type_buf = self.packet_type.to_i32().to_le_bytes();
+        let request_type_buf = self.packet_type.as_i32().to_le_bytes();
         buffer.extend_from_slice(&request_type_buf);
 
         // PAYLOAD (00-terminated string)
@@ -82,16 +82,17 @@ impl Packet {
 
         // NULL-termination
         buffer.push(0);
-        buffer
+        buffer.to_vec()
     }
 }
 
 impl PacketType {
-    pub fn to_i32(&self) -> i32 {
+    pub fn as_i32(&self) -> &i32 {
         match self {
-            Self::Login => 3,
-            Self::Auth | Self::RunCommand => 2,
-            Self::MultiPacketResponse => 0,
+            Self::Login => &3,
+            Self::Auth | Self::RunCommand => &2,
+            Self::MultiPacketResponse => &0,
+            Self::Invalid(n) => n
         }
     }
 }
