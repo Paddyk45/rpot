@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(clippy::missing_const_for_fn, clippy::redundant_pub_crate)]
-mod conversions;
+mod de_serialize;
 mod generator;
 mod handlers;
 mod model;
@@ -79,7 +79,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     break;
                 }
                 let packet: Packet =
-                    Packet::from_u8_arr(&read).expect("Failed to deserialize received packet");
+                    Packet::try_deserialize(read).expect("Failed to deserialize received packet");
                 println!(
                     "Packet from {}:\n Length: {}\n Request ID: {}\n Request Type: {:?}\n Payload: {}",
                     stream.peer_addr()?,
@@ -103,9 +103,9 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     _ => handler_invalid,
                 };
 
-                let response_packet = &handler(packet).into_vec();
+                let response_packet = Packet::serialize(handler(packet));
                 stream
-                    .write_all(response_packet)
+                    .write_all(&response_packet)
                     .await
                     .expect("Failed to write to stream");
             }
