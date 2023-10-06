@@ -103,7 +103,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     _ => handler_invalid,
                 };
 
-                let response_packet = Packet::serialize(handler(packet));
+                let response_packet = handler(packet).serialize();
                 stream
                     .write_all(&response_packet)
                     .await

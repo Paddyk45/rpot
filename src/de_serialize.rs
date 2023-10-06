@@ -50,17 +50,17 @@ impl Packet {
 
 // Serialize
 impl Packet {
-    pub fn serialize(packet: Self) -> Vec<u8> {
+    pub fn serialize(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
 
         // LENGTH (32 bit integer - 4 bytes)
         buffer.extend_from_slice(
-            &match packet.length {
+            &match self.length {
                 None => {
                     let mut len = 0;
                     len += 4;  // request id (i32 = 4 bytes)
                     len += 4; // packet type (i32 = 4 bytes)
-                    len += packet.payload.clone().unwrap_or_default().len() as i32 + 1; // Payload length + NULL-terminator (payload length + 1 byte)
+                    len += self.payload.clone().unwrap_or_default().len() as i32 + 1; // Payload length + NULL-terminator (payload length + 1 byte)
                     len + 1 // NULL-terminator (1 byte)
                 }
                 Some(len) => len,
@@ -69,15 +69,15 @@ impl Packet {
         );
 
         // REQUEST ID (32 bit integer - 4 bytes)
-        let request_id_buf = packet.request_id.to_le_bytes();
+        let request_id_buf = self.request_id.to_le_bytes();
         buffer.extend_from_slice(&request_id_buf);
 
         // REQUEST TYPE (32 bit integer - 4 bytes)
-        let request_type_buf = packet.packet_type.as_i32().to_le_bytes();
+        let request_type_buf = self.packet_type.as_i32().to_le_bytes();
         buffer.extend_from_slice(&request_type_buf);
 
         // PAYLOAD (00-terminated string)
-        if let Some(pl) = packet.payload {
+        if let Some(pl) = self.payload.clone() {
             buffer.extend_from_slice(pl.as_bytes());
         }
 
