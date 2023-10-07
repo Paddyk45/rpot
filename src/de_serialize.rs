@@ -59,13 +59,13 @@ impl Packet {
                 .length
                 .map_or_else(
                     || {
-                        let mut len = 0;
+                        let mut len: i32 = 0;
                         len += 4; // request id (i32 = 4 bytes)
                         len += 4; // packet type (i32 = 4 bytes)
-                        len += self.payload.clone().unwrap_or_default().len() + 1; // Payload length + NULL-terminator (payload length + 1 byte)
+                        len += self.payload.clone().unwrap_or_default().len() as i32 + 1; // Payload length + NULL-terminator (payload length + 1 byte)
                         len + 1 // NULL-terminator (1 byte)
                     },
-                    |len| len as usize,
+                    |len| len,
                 )
                 .to_le_bytes(),
         );
