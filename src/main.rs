@@ -1,26 +1,28 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(clippy::missing_const_for_fn, clippy::redundant_pub_crate)]
+
+use std::process::exit;
+use std::time::Duration;
+
+use anyhow::bail;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    select,
+};
+use tokio::signal::unix::{signal, SignalKind};
+
+use handlers::*;
+use webhook_model::{MaybeWebhook, Webhook};
+
+use crate::model::{EventType, Packet, PacketType};
+
 mod de_serialize;
 mod generator;
 mod handlers;
 mod model;
 mod webhook;
 mod webhook_model;
-
-use handlers::*;
-use std::process::exit;
-use std::time::Duration;
-
-use anyhow::bail;
-use tokio::signal::unix::{signal, SignalKind};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
-    select,
-};
-use webhook_model::{MaybeWebhook, Webhook};
-
-use crate::model::{EventType, Packet, PacketType};
 
 // This is based on https://gist.github.com/fortruce/828bcc3499eb291e7e17
 #[tokio::main]
@@ -36,7 +38,7 @@ async fn main() {
         let mut sigterm = signal(SignalKind::terminate()).unwrap();
         select! {
              _ = sigterm.recv() => {
-                    println!("Recieved SIGTERM, exiting...");
+                    println!("Received SIGTERM, exiting...");
                     exit(0)
                 }
         }
@@ -97,7 +99,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     PacketType::Login => handler_login,
 
                     PacketType::RunCommand => {
-                        tokio::time::sleep(Duration::from_secs(1)).await; // Simulate delay for commands
+                        tokio::time::sleep(Duration::from_millis(500)).await; // Simulate delay for commands
                         handler_runcommand
                     }
                     _ => handler_invalid,

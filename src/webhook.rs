@@ -79,7 +79,7 @@ impl Webhook {
                 };
                 desc.push_str(&gen_codeblock(&format!(
                     "\n{}{placeholder}{}",
-                    event.to_string(),
+                    event,
                     payload.clone().unwrap_or_default().replace('`', "") // remove backticks so you can't end codeblock
                 )));
                 // change color to red if client disconnected
