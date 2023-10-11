@@ -67,6 +67,7 @@ async fn main() {
 }
 
 async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> anyhow::Result<()> {
+    let mut is_authenticated = false;
     let _ = webhook
         .send_if_some(EventType::ClientConnect, None)
         .await
@@ -96,11 +97,19 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     .map_err(webhook::print_webhook_err);
 
                 let handler: fn(Packet) -> Packet = match packet.packet_type {
-                    PacketType::Login => handler_login,
+                    PacketType::Login => {
+                        is_authenticated = true;
+                        handler_login
+                    },
 
                     PacketType::RunCommand => {
-                        tokio::time::sleep(Duration::from_millis(500)).await; // Simulate delay for commands
-                        handler_runcommand
+                        match is_authenticated {
+                            false => |_| Packet::gen_auth_fail(),
+                            true => {
+                                tokio::time::sleep(Duration::from_millis(500)).await; // Simulate delay for commands
+                                handler_runcommand
+                            }
+                        }
                     }
                     _ => handler_invalid,
                 };
