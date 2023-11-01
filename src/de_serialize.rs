@@ -3,9 +3,9 @@ use crate::model::{Packet, PacketType};
 // Deserialize
 impl Packet {
     pub fn try_deserialize(buffer: [u8; 1024]) -> anyhow::Result<Self> {
-        let length_slice: [u8; 4] = buffer[0..4].try_into().unwrap();
-        let request_id_slice: [u8; 4] = buffer[4..8].try_into().unwrap();
-        let packet_type_slice: [u8; 4] = buffer[8..12].try_into().unwrap();
+        let length_slice: [u8; 4] = buffer[0..4].try_into()?;
+        let request_id_slice: [u8; 4] = buffer[4..8].try_into()?;
+        let packet_type_slice: [u8; 4] = buffer[8..12].try_into()?;
         let mut payload_vec: Vec<u8> = Vec::new();
         for item in buffer.iter().skip(12) {
             match item {
@@ -44,7 +44,7 @@ impl Packet {
         if buffer.is_empty() {
             return None;
         }
-        Some(String::from_utf8(buffer).unwrap())
+        Some(String::from_utf8(buffer).unwrap_or_else(|_| "(UTF-8 error)".to_string()))
     }
 }
 
