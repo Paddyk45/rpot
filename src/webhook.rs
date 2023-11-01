@@ -62,7 +62,7 @@ impl Webhook {
             }
             Some(msgid) => {
                 if msgid == *"ERROR".to_string() {
-                    bail!("Initial Webhook request returned error")
+                    bail!("Last Webhook request returned error")
                 }
                 let mut desc = self
                     .message_embed
@@ -117,10 +117,10 @@ impl Webhook {
             .await?;
         if response.status() != 200 {
             self.message_id = Some("ERROR".to_string());
-            bail!(format!(
+            bail!(
                 "Discord API returned non-200 status code. Body: {}",
                 response.text().await?
-            ))
+            )
         }
         let response: WebhookResponse = response.json().await?;
         self.message_id = Some(response.id);

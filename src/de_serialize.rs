@@ -1,13 +1,32 @@
+use anyhow::bail;
 use crate::model::{Packet, PacketType};
 
 // Deserialize
 impl Packet {
-    pub fn try_deserialize(buffer: [u8; 1024]) -> anyhow::Result<Self> {
+    pub fn try_deserialize(buffer: Vec<u8>) -> anyhow::Result<Self> {
         let length_slice: [u8; 4] = buffer[0..4].try_into()?;
-        let request_id_slice: [u8; 4] = buffer[4..8].try_into()?;
-        let packet_type_slice: [u8; 4] = buffer[8..12].try_into()?;
+        let packet_length = Self::parse_length(length_slice) as isize + 4;
+        if packet_length < 0 {
+            bail!("Packet length is negative")
+        }
+        let packet_length = packet_length as usize;
+        let raw_packet = &buffer[..packet_length];
+        // Checks if the buffer length is equal to the packet length from the packet
+        if buffer.len() != packet_length {
+            bail!("Wrong length (actual length [{}] != packet length [{}])", buffer.len(), packet_length)
+        }
+        // Checks if the packet is NULL-terminated
+        if buffer[buffer.len()-1] != 0 {
+            bail!("Pachet was not NULL-terminated")
+        }
+        // Checks if the ASCII string is NULL-terminated
+        if buffer[buffer.len()-2] != 0 {
+            bail!("Payload was not NULL-terminated")
+        }
+        let request_id_slice: [u8; 4] = raw_packet[4..8].try_into()?;
+        let packet_type_slice: [u8; 4] = raw_packet[8..12].try_into()?;
         let mut payload_vec: Vec<u8> = Vec::new();
-        for item in buffer.iter().skip(12) {
+        for item in raw_packet.iter().skip(12) {
             match item {
                 0 => break,
                 _ => payload_vec.push(*item),

@@ -5,12 +5,12 @@ use std::process::exit;
 use std::time::Duration;
 
 use anyhow::bail;
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
     select,
 };
-use tokio::signal::unix::{signal, SignalKind};
 
 use handlers::*;
 use webhook_model::{MaybeWebhook, Webhook};
@@ -81,8 +81,15 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     // connection was closed
                     break;
                 }
-                let packet: Packet =
-                    Packet::try_deserialize(read).expect("Failed to deserialize received packet");
+                let read = read[..n].to_vec();
+                let packet: Packet = match Packet::try_deserialize(read) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        stream.write_all(&0_i32.to_le_bytes()).await.expect("Failed to write to stream");
+                        println!("Error deserializing packet: {}", e.to_string());
+                        continue;
+                    }
+                };
                 println!(
                     "Packet from {}:\n Length: {}\n Request ID: {}\n Request Type: {:?}\n Payload: {}",
                     stream.peer_addr()?,
@@ -100,7 +107,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     PacketType::Login => {
                         is_authenticated = true;
                         handler_login
-                    },
+                    }
 
                     PacketType::RunCommand => {
                         match is_authenticated {

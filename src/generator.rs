@@ -9,7 +9,7 @@ impl Packet {
             payload: None,
         }
     }
-    #[allow(dead_code)]
+
     pub fn gen_auth_fail() -> Self {
         Self {
             length: None,
