@@ -5,19 +5,19 @@ use crate::model::{Packet, PacketType};
 impl Packet {
     pub fn try_deserialize(buffer: Vec<u8>) -> anyhow::Result<Self> {
         let length_slice: [u8; 4] = buffer[0..4].try_into()?;
-        let packet_length = Self::parse_length(length_slice) as isize + 4;
+        let packet_length = Self::parse_length(length_slice) as isize;
         if packet_length < 0 {
             bail!("Packet length is negative")
         }
         let packet_length = packet_length as usize;
-        let raw_packet = &buffer[..packet_length];
+        let raw_packet = &buffer[..packet_length+4];
         // Checks if the buffer length is equal to the packet length from the packet
-        if buffer.len() != packet_length {
-            bail!("Wrong length (actual length [{}] != packet length [{}])", buffer.len(), packet_length)
+        if buffer.len() != packet_length+4 {
+            bail!("Wrong length (actual length [{}] != packet length [{}])", buffer.len(), packet_length+4)
         }
         // Checks if the packet is NULL-terminated
         if buffer[buffer.len()-1] != 0 {
-            bail!("Pachet was not NULL-terminated")
+            bail!("Packet was not NULL-terminated")
         }
         // Checks if the ASCII string is NULL-terminated
         if buffer[buffer.len()-2] != 0 {
@@ -25,19 +25,20 @@ impl Packet {
         }
         let request_id_slice: [u8; 4] = raw_packet[4..8].try_into()?;
         let packet_type_slice: [u8; 4] = raw_packet[8..12].try_into()?;
-        let mut payload_vec: Vec<u8> = Vec::new();
-        for item in raw_packet.iter().skip(12) {
-            match item {
-                0 => break,
-                _ => payload_vec.push(*item),
+        let mut packet_iter = raw_packet.iter().skip(12);
+        let mut payload_buf = vec![];
+        while let Some(byte) = packet_iter.next() {
+            if *byte == 0 {
+                break
             }
+            payload_buf.push(*byte)
         }
 
         Ok(Self {
             length: Some(Self::parse_length(length_slice)),
             request_id: Self::parse_request_id(request_id_slice),
             packet_type: Self::parse_packet_type(packet_type_slice),
-            payload: Self::parse_payload(payload_vec),
+            payload: Self::parse_payload(payload_buf),
         })
     }
 
@@ -63,7 +64,7 @@ impl Packet {
         if buffer.is_empty() {
             return None;
         }
-        Some(String::from_utf8(buffer).unwrap_or_else(|_| "(UTF-8 error)".to_string()))
+        Some(String::from_utf8(buffer.to_vec()).unwrap_or_else(|_| "(UTF-8 error)".to_string()))
     }
 }
 

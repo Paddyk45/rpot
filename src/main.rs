@@ -105,7 +105,9 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
 
                 let handler: fn(Packet) -> Packet = match packet.packet_type {
                     PacketType::Login => {
-                        is_authenticated = true;
+                        if packet.payload == None {
+                            is_authenticated = true;
+                        }
                         handler_login
                     }
 

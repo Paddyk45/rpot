@@ -1,7 +1,12 @@
 [package]
 name = "rpot"
+description = "A Minecraft RCON Honeypot"
+authors = ["Paddyk45"]
+license = "GPL-3"
+license-file = "LICENSE"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/Paddyk45/rpot"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
