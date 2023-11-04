@@ -10,7 +10,6 @@ impl Packet {
             bail!("Packet length is negative")
         }
         let packet_length = packet_length as usize;
-        let raw_packet = &buffer[..packet_length+4];
         // Checks if the buffer length is equal to the packet length from the packet
         if buffer.len() != packet_length+4 {
             bail!("Wrong length (actual length [{}] != packet length [{}])", buffer.len(), packet_length+4)
@@ -23,6 +22,7 @@ impl Packet {
         if buffer[buffer.len()-2] != 0 {
             bail!("Payload was not NULL-terminated")
         }
+        let raw_packet = &buffer[..packet_length+4];
         let request_id_slice: [u8; 4] = raw_packet[4..8].try_into()?;
         let packet_type_slice: [u8; 4] = raw_packet[8..12].try_into()?;
         let mut packet_iter = raw_packet.iter().skip(12);

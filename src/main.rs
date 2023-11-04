@@ -1,6 +1,7 @@
 #![warn(clippy::all, clippy::nursery)]
 #![allow(clippy::missing_const_for_fn, clippy::redundant_pub_crate)]
 
+use std::net::{IpAddr, SocketAddr};
 use std::process::exit;
 use std::time::Duration;
 
@@ -23,6 +24,7 @@ mod handlers;
 mod model;
 mod webhook;
 mod webhook_model;
+mod tests;
 
 // This is based on https://gist.github.com/fortruce/828bcc3499eb291e7e17
 #[tokio::main]
@@ -30,9 +32,9 @@ async fn main() {
     let bind_addr = std::env::var("RPOT_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0".to_string());
     let bind_port = std::env::var("RPOT_BIND_PORT").unwrap_or_else(|_| "25575".to_string());
     let webhook_url = std::env::var("RPOT_WEBHOOK_URL").ok();
-    let listener = TcpListener::bind((bind_addr.clone(), bind_port.parse::<u16>().unwrap()))
-        .await
-        .unwrap();
+    let ip_addr = IpAddr::V4(bind_addr.parse().expect("Failed to parse RPOT_BIND_ADDR as IPv4"));
+    let port: u16 = bind_port.parse().expect("Failed to parse RPOT_BIND_PORT as port");
+    let addr = SocketAddr::new(ip_addr, port);
 
     tokio::spawn(async move {
         let mut sigterm = signal(SignalKind::terminate()).unwrap();
@@ -44,7 +46,14 @@ async fn main() {
         }
     });
 
-    println!("Listening on {}:{}", bind_addr, bind_port);
+    listener(addr, webhook_url).await;
+}
+
+async fn listener(addr: SocketAddr, webhook_url: Option<String>) {
+    let listener = TcpListener::bind(addr)
+        .await
+        .unwrap();
+    println!("Listening on {}:{}", addr.ip(), addr.port());
     while let Ok(stream) = listener.accept().await {
         let stream = stream.0;
         let webhook_url = webhook_url.clone();
@@ -81,7 +90,12 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
                     // connection was closed
                     break;
                 }
-                let read = read[..n].to_vec();
+
+                let mut read = read[..n].to_vec();
+                let expected_len = i32::from_le_bytes(read[0..4].try_into().unwrap()) + 4;
+                if expected_len != read.len() as i32 {
+                    continue;
+                }
                 let packet: Packet = match Packet::try_deserialize(read) {
                     Ok(p) => p,
                     Err(e) => {
@@ -105,7 +119,7 @@ async fn handle_client(mut stream: TcpStream, webhook: &mut MaybeWebhook) -> any
 
                 let handler: fn(Packet) -> Packet = match packet.packet_type {
                     PacketType::Login => {
-                        if packet.payload == None {
+                        if packet.payload != None {
                             is_authenticated = true;
                         }
                         handler_login

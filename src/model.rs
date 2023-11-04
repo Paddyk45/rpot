@@ -1,6 +1,6 @@
 use core::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Packet {
     pub length: Option<i32>,
     pub request_id: i32,
@@ -8,7 +8,7 @@ pub struct Packet {
     pub payload: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PacketType {
     Login,               // Packet type: 3
     Auth,                // Packet type: 2

@@ -3,7 +3,6 @@ name = "rpot"
 description = "A Minecraft RCON Honeypot"
 authors = ["Paddyk45"]
 license = "GPL-3"
-license-file = "LICENSE"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/Paddyk45/rpot"
@@ -12,6 +11,7 @@ repository = "https://github.com/Paddyk45/rpot"
 
 [dependencies]
 anyhow = "1.0.75"
+assert_cmd = "2.0.12"
 reqwest = { version = "0.11.20", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.105"
